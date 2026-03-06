@@ -1,11 +1,11 @@
 # thermac
 
-Tiny CLI for Apple Silicon Mac temperatures using SMC keys (via Stats OSS SMC implementation).
+Tiny CLI for Apple Silicon Mac temperatures using SMC keys.
 
 ## Install
 
 ```bash
-git clone https://github.com/anishde/thermac.git
+git clone https://github.com/AnishDe12020/thermac.git
 cd thermac
 ./install.sh
 ~/.local/bin/thermac --json
@@ -28,9 +28,10 @@ cd thermac
 
 ## Notes
 
+- No runtime git clone: SMC sources are vendored in this repo (`vendor/stats-smc`).
 - Uses private/undocumented sensor keys; macOS updates may affect readings.
 - `cpu_avg_c` and `gpu_avg_c` are heuristic averages by key prefix.
-- Credit: [exelban/stats](https://github.com/exelban/stats) for the SMC implementation foundation.
+- Credit: [exelban/stats](https://github.com/exelban/stats) for SMC implementation foundation.
 
 ## License
 

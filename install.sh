@@ -3,15 +3,17 @@ set -euo pipefail
 BIN_DIR="${THERMAC_BIN_DIR:-$HOME/.local/bin}"
 mkdir -p "$BIN_DIR"
 
-TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"' EXIT
-cd "$TMP"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SWIFT_SMC="$SCRIPT_DIR/vendor/stats-smc/smc.swift"
+SWIFT_MAIN="$SCRIPT_DIR/vendor/stats-smc/main.swift"
 
-git clone --depth=1 https://github.com/exelban/stats.git >/dev/null 2>&1
-cd stats/SMC
-swiftc smc.swift main.swift -O -o "$BIN_DIR/smc-cli"
+if [[ ! -f "$SWIFT_SMC" || ! -f "$SWIFT_MAIN" ]]; then
+  echo "Vendored SMC sources missing under vendor/stats-smc" >&2
+  exit 1
+fi
 
-cp "$OLDPWD/thermac" "$BIN_DIR/thermac"
+swiftc "$SWIFT_SMC" "$SWIFT_MAIN" -O -o "$BIN_DIR/smc-cli"
+cp "$SCRIPT_DIR/thermac" "$BIN_DIR/thermac"
 chmod +x "$BIN_DIR/thermac" "$BIN_DIR/smc-cli"
 
 echo "Installed: $BIN_DIR/thermac"
