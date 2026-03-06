@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -euo pipefail
+FMT="text"
+if [[ "${1:-}" == "--json" ]]; then FMT="json"; fi
+
+BIN_DIR="${THERMAC_BIN_DIR:-$HOME/.local/bin}"
+SMC_BIN="$BIN_DIR/smc-cli"
+if [[ ! -x "$SMC_BIN" ]]; then
+  SMC_BIN="$HOME/bin/smc-cli"
+fi
+if [[ ! -x "$SMC_BIN" ]]; then
+  echo "smc-cli not found. Run ./install.sh first." >&2
+  exit 1
+fi
+
+RAW="$($SMC_BIN list -t 2>/dev/null || true)"
+if [[ -z "$RAW" ]]; then
+  echo "no sensor data" >&2
+  exit 2
+fi
+
+PARSED=$(printf "%s\n" "$RAW" | awk '
+/^[[]T/ {
+  key=$1; gsub(/^[[]|[]]$/,"",key);
+  val=$2+0;
+  if (val<=0 || val>120) next;
+  total+=val; count++;
+  if (val>max) {max=val; maxk=key}
+  if (key ~ /^(Tp|Te|Tf|TC)/) {cpu+=val; cpuN++}
+  if (key ~ /^(Tg|TG)/) {gpu+=val; gpuN++}
+}
+END{
+  if (count==0) { print "ERR"; exit }
+  hottest=(max==""?0:max);
+  avg=(count?total/count:0);
+  cavg=(cpuN?cpu/cpuN:0);
+  gavg=(gpuN?gpu/gpuN:0);
+  printf "hottest_key=%s\n", maxk;
+  printf "hottest_c=%.2f\n", hottest;
+  printf "avg_all_c=%.2f\n", avg;
+  printf "cpu_avg_c=%.2f\n", cavg;
+  printf "gpu_avg_c=%.2f\n", gavg;
+  printf "sensor_count=%d\n", count;
+  printf "cpu_sensor_count=%d\n", cpuN;
+  printf "gpu_sensor_count=%d\n", gpuN;
+}')
+
+if printf "%s" "$PARSED" | grep -q '^ERR$'; then
+  echo "no valid temps" >&2
+  exit 3
+fi
+
+if [[ "$FMT" == "json" ]]; then
+  hk=$(printf "%s\n" "$PARSED" | awk -F= '/^hottest_key=/{print $2}')
+  hc=$(printf "%s\n" "$PARSED" | awk -F= '/^hottest_c=/{print $2}')
+  aa=$(printf "%s\n" "$PARSED" | awk -F= '/^avg_all_c=/{print $2}')
+  ca=$(printf "%s\n" "$PARSED" | awk -F= '/^cpu_avg_c=/{print $2}')
+  ga=$(printf "%s\n" "$PARSED" | awk -F= '/^gpu_avg_c=/{print $2}')
+  sc=$(printf "%s\n" "$PARSED" | awk -F= '/^sensor_count=/{print $2}')
+  csc=$(printf "%s\n" "$PARSED" | awk -F= '/^cpu_sensor_count=/{print $2}')
+  gsc=$(printf "%s\n" "$PARSED" | awk -F= '/^gpu_sensor_count=/{print $2}')
+  ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  printf '{"timestamp_utc":"%s","hottest":{"key":"%s","c":%s},"cpu_avg_c":%s,"gpu_avg_c":%s,"avg_all_c":%s,"sensor_count":%s,"cpu_sensor_count":%s,"gpu_sensor_count":%s}\n' "$ts" "$hk" "$hc" "$ca" "$ga" "$aa" "$sc" "$csc" "$gsc"
+else
+  echo "$PARSED"
+fi
