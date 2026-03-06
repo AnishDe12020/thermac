@@ -1,5 +1,5 @@
 Vendored from exelban/stats
 Source: https://github.com/exelban/stats
-Commit: deb6f20
+Ref: master (raw)
 Files: SMC/smc.swift, SMC/main.swift
 License: MIT (upstream)
